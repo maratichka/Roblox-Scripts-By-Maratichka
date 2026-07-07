@@ -681,7 +681,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Mobile fly buttons
+-- Mobile fly buttons (движение слева, высота справа)
 if IsMobile then
     local function createMobileFlyButton(text, position, flag)
         local btn = Instance.new("TextButton")
@@ -689,14 +689,14 @@ if IsMobile then
         btn.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
         btn.BackgroundTransparency = 0.6
         btn.Position = position
-        btn.Size = UDim2.new(0, 50, 0, 50)
+        btn.Size = UDim2.new(0, 45, 0, 45)
         btn.Text = text
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 20
+        btn.TextSize = 18
         btn.Font = Enum.Font.SourceSansBold
         btn.Visible = false
         btn.ZIndex = 10
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 25)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 22)
         
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch then
@@ -712,13 +712,16 @@ if IsMobile then
         return btn
     end
     
+    -- Левая сторона: движение (WASD)
     local mobileFlyBtns = {
-        createMobileFlyButton("▲", UDim2.new(0.8, -25, 0.45, -25), "forward"),
-        createMobileFlyButton("▼", UDim2.new(0.8, -25, 0.65, -25), "back"),
-        createMobileFlyButton("◄", UDim2.new(0.7, -25, 0.55, -25), "left"),
-        createMobileFlyButton("►", UDim2.new(0.9, -25, 0.55, -25), "right"),
-        createMobileFlyButton("⇧", UDim2.new(0.15, -25, 0.45, -25), "up"),
-        createMobileFlyButton("⇩", UDim2.new(0.15, -25, 0.65, -25), "down"),
+        createMobileFlyButton("▲", UDim2.new(0.08, -22, 0.40, -22), "forward"),   -- Вперёд (верх)
+        createMobileFlyButton("▼", UDim2.new(0.08, -22, 0.60, -22), "back"),      -- Назад (низ)
+        createMobileFlyButton("◄", UDim2.new(0.02, -22, 0.50, -22), "left"),      -- Влево
+        createMobileFlyButton("►", UDim2.new(0.14, -22, 0.50, -22), "right"),     -- Вправо
+        
+        -- Правая сторона: высота (E/C)
+        createMobileFlyButton("⇧", UDim2.new(0.88, -22, 0.40, -22), "up"),        -- Вверх
+        createMobileFlyButton("⇩", UDim2.new(0.88, -22, 0.60, -22), "down"),      -- Вниз
     }
     
     -- Show/hide mobile fly buttons
