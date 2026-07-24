@@ -6,7 +6,7 @@
     
     Features:
     - Player: Speed, Jump, Fly, Sprint, Noclip, Infinity Jumps
-    - FE Fling: SkidFling, usercheck
+    - FE Fling: SkidFling, usercheck, player list
     - ESP: Box, Tracer, Name, Skeleton, Chams
     - AIM: Circle Aim + Lock Aim with Prediction
     
@@ -148,10 +148,11 @@ local C = {
     Border = Color3.fromRGB(238, 123, 6),      -- #ee7b06 - Обводки, слайдеры заполненные
     Text = Color3.fromRGB(255, 200, 100),      -- Светлый магмовый текст
     TextDark = Color3.fromRGB(200, 120, 50),   -- Тусклый текст для подписей
-    OffColor = Color3.fromRGB(50, 15, 15),     -- Тоггл выключен (почти как фон)
+    OffColor = Color3.fromRGB(80, 25, 25),     -- Тоггл выключен (светлее чтоб видно было)
     OnColor = Color3.fromRGB(238, 123, 6),     -- Тоггл включен (#ee7b06)
     SliderBg = Color3.fromRGB(40, 12, 12),     -- Фон слайдера (пустая часть)
-    SliderFill = Color3.fromRGB(255, 169, 4)   -- Заполнение слайдера (#ffa904)
+    SliderFill = Color3.fromRGB(255, 169, 4),  -- Заполнение слайдера (#ffa904)
+    SectionBg = Color3.fromRGB(55, 18, 18)     -- Фон секций в плеере
 }
 
 -- ==================== GUI ====================
@@ -272,6 +273,10 @@ local function SwitchTab(tabName)
             btn.TextColor3 = C.TextDark
         end
     end
+    -- Обновляем список игроков при открытии вкладки флинга
+    if tabName == "FE Fling" then
+        UpdatePlayerList()
+    end
 end
 
 for tabName, button in pairs(TabButtons) do
@@ -285,7 +290,7 @@ local PlayerScroll = Instance.new("ScrollingFrame")
 PlayerScroll.Parent = ContentFrames["Player"]
 PlayerScroll.BackgroundTransparency = 1
 PlayerScroll.Size = UDim2.new(1, 0, 1, 0)
-PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 600)
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 650)
 PlayerScroll.ScrollBarThickness = 3
 PlayerScroll.ScrollBarImageColor3 = C.Border
 
@@ -295,13 +300,28 @@ local py = 5
 local function CreateBox(parent, y, h)
     local box = Instance.new("Frame")
     box.Parent = parent
-    box.BackgroundColor3 = Color3.fromRGB(50, 15, 15)
+    box.BackgroundColor3 = C.SectionBg
     box.BorderColor3 = C.Border
     box.BorderSizePixel = 1
     box.Position = UDim2.new(0, 0, 0, y)
     box.Size = UDim2.new(1, 0, 0, h)
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
     return box
+end
+
+-- Заголовок секции
+local function CreateSectionHeader(parent, y, text)
+    local label = Instance.new("TextLabel")
+    label.Parent = parent
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 5, 0, y)
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Font = Enum.Font.SourceSansBold
+    label.Text = text
+    label.TextColor3 = C.AccentLight
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    return label
 end
 
 -- Слайдер с перетягиванием, на телефоне тоже норм работает
@@ -499,28 +519,38 @@ local function CreateBind(parent, y, label, defaultKey, callback)
     end)
 end
 
--- === SPEED ===
+-- === [Movement] ===
+CreateSectionHeader(PlayerScroll, py, "[Movement]")
+py = py + 22
+
 CreateSlider(PlayerScroll, py, "Speed", 1, 500, 16, function(val)
     PlayerSettings.Speed = val
     ApplyCharacterSettings()
 end)
 py = py + 66
 
--- === JUMP POWER ===
 CreateSlider(PlayerScroll, py, "Jump Power", 1, 300, 50, function(val)
     PlayerSettings.JumpPower = val
     ApplyCharacterSettings()
 end)
 py = py + 66
 
--- === INFINITY JUMPS ===
 CreateToggle(PlayerScroll, py, "Infinity Jumps", false, function(val)
     PlayerSettings.InfinityJumps = val
     if val then EnableInfinityJumps() else DisableInfinityJumps() end
 end)
 py = py + 40
 
--- === FLY ===
+CreateToggle(PlayerScroll, py, "Noclip", false, function(val)
+    PlayerSettings.NoclipEnabled = val
+    if val then EnableNoclip() else DisableNoclip() end
+end)
+py = py + 40
+
+-- === [Fly] ===
+CreateSectionHeader(PlayerScroll, py, "[Fly]")
+py = py + 22
+
 local FlyToggleRef = CreateToggle(PlayerScroll, py, "Enable Fly", false, function(val)
     PlayerSettings.FlyEnabled = val
     if val then EnableFly() else DisableFly() end
@@ -537,7 +567,10 @@ CreateBind(PlayerScroll, py, "Fly Key:", PlayerSettings.FlyKey, function(key)
 end)
 py = py + 40
 
--- === SPRINT ===
+-- === [Sprint] ===
+CreateSectionHeader(PlayerScroll, py, "[Sprint]")
+py = py + 22
+
 local SprintToggleRef = CreateToggle(PlayerScroll, py, "Enable Sprint", false, function(val)
     PlayerSettings.SprintEnabled = val
     if not val then currentSprintBoost = 0; ApplyCharacterSettings() end
@@ -551,13 +584,6 @@ py = py + 66
 
 CreateBind(PlayerScroll, py, "Sprint Key:", PlayerSettings.SprintKey, function(key)
     PlayerSettings.SprintKey = key
-end)
-py = py + 40
-
--- === NOCLIP ===
-CreateToggle(PlayerScroll, py, "Enable Noclip", false, function(val)
-    PlayerSettings.NoclipEnabled = val
-    if val then EnableNoclip() else DisableNoclip() end
 end)
 py = py + 46
 
@@ -698,7 +724,7 @@ if IsMobile then
     local function createMobileFlyButton(text, position, flag)
         local btn = Instance.new("TextButton")
         btn.Parent = ScreenGui
-        btn.BackgroundColor3 = Color3.fromRGB(238, 123, 6)
+        btn.BackgroundColor3 = C.Border
         btn.BackgroundTransparency = 0.6
         btn.Position = position
         btn.Size = UDim2.new(0, 45, 0, 45)
@@ -730,8 +756,6 @@ if IsMobile then
         createMobileFlyButton("▼", UDim2.new(0.08, -22, 0.60, -22), "back"),
         createMobileFlyButton("◄", UDim2.new(0.02, -22, 0.50, -22), "left"),
         createMobileFlyButton("►", UDim2.new(0.14, -22, 0.50, -22), "right"),
-        
-        -- Правая сторона: высота (E/C)
         createMobileFlyButton("⇧", UDim2.new(0.88, -22, 0.40, -22), "up"),
         createMobileFlyButton("⇩", UDim2.new(0.88, -22, 0.60, -22), "down"),
     }
@@ -780,16 +804,16 @@ local FlingScroll = Instance.new("ScrollingFrame")
 FlingScroll.Parent = ContentFrames["FE Fling"]
 FlingScroll.BackgroundTransparency = 1
 FlingScroll.Size = UDim2.new(1, 0, 1, 0)
-FlingScroll.CanvasSize = UDim2.new(0, 0, 0, 180)
+FlingScroll.CanvasSize = UDim2.new(0, 0, 0, 350)
 FlingScroll.ScrollBarThickness = 3
 FlingScroll.ScrollBarImageColor3 = C.Border
 
-local FlingBox = CreateBox(FlingScroll, 5, 140)
+local FlingBox = CreateBox(FlingScroll, 5, 180)
 
 local FlingTitle = Instance.new("TextLabel")
 FlingTitle.Parent = FlingBox
 FlingTitle.BackgroundTransparency = 1
-FlingTitle.Position = UDim2.new(0, 0, 0, 10)
+FlingTitle.Position = UDim2.new(0, 0, 0, 8)
 FlingTitle.Size = UDim2.new(1, 0, 0, 22)
 FlingTitle.Font = Enum.Font.SourceSansBold
 FlingTitle.Text = "FE Fling"
@@ -800,12 +824,12 @@ FlingTitle.TextXAlignment = Enum.TextXAlignment.Center
 local FlingHint = Instance.new("TextLabel")
 FlingHint.Parent = FlingBox
 FlingHint.BackgroundTransparency = 1
-FlingHint.Position = UDim2.new(0, 0, 0, 34)
+FlingHint.Position = UDim2.new(0, 0, 0, 30)
 FlingHint.Size = UDim2.new(1, 0, 0, 16)
 FlingHint.Font = Enum.Font.SourceSans
-FlingHint.Text = "(enter name)"
+FlingHint.Text = "(select player below or type name)"
 FlingHint.TextColor3 = C.TextDark
-FlingHint.TextSize = 11
+FlingHint.TextSize = 10
 FlingHint.TextXAlignment = Enum.TextXAlignment.Center
 
 local FlingInput = Instance.new("TextBox")
@@ -813,8 +837,8 @@ FlingInput.Parent = FlingBox
 FlingInput.BackgroundColor3 = Color3.fromRGB(30, 8, 8)
 FlingInput.BorderColor3 = C.AccentLight
 FlingInput.BorderSizePixel = 1
-FlingInput.Position = UDim2.new(0, 20, 0, 55)
-FlingInput.Size = UDim2.new(1, -40, 0, 30)
+FlingInput.Position = UDim2.new(0, 15, 0, 50)
+FlingInput.Size = UDim2.new(1, -30, 0, 28)
 FlingInput.Font = Enum.Font.SourceSans
 FlingInput.PlaceholderText = "username..."
 FlingInput.PlaceholderColor3 = C.TextDark
@@ -823,74 +847,144 @@ FlingInput.TextColor3 = C.AccentLight
 FlingInput.TextSize = 14
 Instance.new("UICorner", FlingInput).CornerRadius = UDim.new(0, 5)
 
+-- Список игроков
+local PlayerListFrame = Instance.new("ScrollingFrame")
+PlayerListFrame.Parent = FlingBox
+PlayerListFrame.BackgroundColor3 = Color3.fromRGB(40, 12, 12)
+PlayerListFrame.BorderColor3 = C.Border
+PlayerListFrame.BorderSizePixel = 1
+PlayerListFrame.Position = UDim2.new(0, 15, 0, 84)
+PlayerListFrame.Size = UDim2.new(1, -30, 0, 70)
+PlayerListFrame.ScrollBarThickness = 3
+PlayerListFrame.ScrollBarImageColor3 = C.Border
+PlayerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+Instance.new("UICorner", PlayerListFrame).CornerRadius = UDim.new(0, 5)
+
+local PlayerListLayout = Instance.new("UIListLayout")
+PlayerListLayout.Parent = PlayerListFrame
+PlayerListLayout.SortOrder = Enum.SortOrder.Name
+PlayerListLayout.Padding = UDim.new(0, 2)
+PlayerListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Функция обновления списка игроков
+function UpdatePlayerList()
+    -- Очищаем старый список
+    for _, child in ipairs(PlayerListFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    local anyPlayers = false
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= Player then
+            anyPlayers = true
+            local playerBtn = Instance.new("TextButton")
+            playerBtn.Parent = PlayerListFrame
+            playerBtn.Size = UDim2.new(1, -4, 0, 22)
+            playerBtn.BackgroundColor3 = C.Secondary
+            playerBtn.BorderSizePixel = 0
+            playerBtn.Text = p.DisplayName .. " (@" .. p.Name .. ")"
+            playerBtn.TextColor3 = C.Text
+            playerBtn.Font = Enum.Font.SourceSans
+            playerBtn.TextSize = 12
+            playerBtn.AutoButtonColor = false
+            Instance.new("UICorner", playerBtn).CornerRadius = UDim.new(0, 4)
+            
+            playerBtn.MouseButton1Click:Connect(function()
+                FlingInput.Text = p.Name
+                -- Подсветка выбранного
+                for _, b in ipairs(PlayerListFrame:GetChildren()) do
+                    if b:IsA("TextButton") then b.BackgroundColor3 = C.Secondary end
+                end
+                playerBtn.BackgroundColor3 = C.Accent
+            end)
+        end
+    end
+    
+    if not anyPlayers then
+        local noPlayersLabel = Instance.new("TextLabel")
+        noPlayersLabel.Parent = PlayerListFrame
+        noPlayersLabel.Size = UDim2.new(1, 0, 0, 22)
+        noPlayersLabel.BackgroundTransparency = 1
+        noPlayersLabel.Text = "No players found"
+        noPlayersLabel.TextColor3 = C.TextDark
+        noPlayersLabel.Font = Enum.Font.SourceSans
+        noPlayersLabel.TextSize = 12
+    end
+    
+    PlayerListFrame.CanvasSize = UDim2.new(0, 0, 0, PlayerListLayout.AbsoluteContentSize.Y + 10)
+end
+
+-- Кнопка FLING
 local FlingButton = Instance.new("TextButton")
 FlingButton.Parent = FlingBox
 FlingButton.BackgroundColor3 = C.Accent
-FlingButton.Position = UDim2.new(0, 20, 0, 93)
-FlingButton.Size = UDim2.new(1, -40, 0, 36)
+FlingButton.Position = UDim2.new(0, 15, 0, 158)
+FlingButton.Size = UDim2.new(1, -30, 0, 0)
+FlingButton.Size = UDim2.new(1, -30, 0, 28)
 FlingButton.Font = Enum.Font.SourceSansBold
 FlingButton.Text = "FLING"
-FlingButton.TextColor3 = Color3.fromRGB(64, 11, 11)
-FlingButton.TextSize = 20
+FlingButton.TextColor3 = C.Bg
+FlingButton.TextSize = 16
 FlingButton.AutoButtonColor = false
-Instance.new("UICorner", FlingButton).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", FlingButton).CornerRadius = UDim.new(0, 5)
 
 -- ==================== ВКЛАДКА ESP/AIM ====================
 local ESPAIMScroll = Instance.new("ScrollingFrame")
 ESPAIMScroll.Parent = ContentFrames["ESP/AIM"]
 ESPAIMScroll.BackgroundTransparency = 1
 ESPAIMScroll.Size = UDim2.new(1, 0, 1, 0)
-ESPAIMScroll.CanvasSize = UDim2.new(0, 0, 0, 800)
+ESPAIMScroll.CanvasSize = UDim2.new(0, 0, 0, 950)
 ESPAIMScroll.ScrollBarThickness = 3
 ESPAIMScroll.ScrollBarImageColor3 = C.Border
+ESPAIMScroll.ZIndex = 5
 
 local ey = 5
 
--- Заголовок секции
-local function CreateSectionLabel(parent, y, text)
+-- Заголовок секции для ESP/AIM
+local function CreateESPSectionHeader(parent, y, text)
     local label = Instance.new("TextLabel")
     label.Parent = parent
     label.BackgroundTransparency = 1
     label.Position = UDim2.new(0, 5, 0, y)
-    label.Size = UDim2.new(1, 0, 0, 22)
+    label.Size = UDim2.new(1, -10, 0, 20)
     label.Font = Enum.Font.SourceSansBold
     label.Text = text
     label.TextColor3 = C.AccentLight
-    label.TextSize = 13
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 5
     return label
 end
 
--- Тоггл для ESP/AIM
+-- Тоггл для ESP/AIM (в коробочке)
 local function CreateESPToggle(parent, y, text, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.BackgroundTransparency = 1
-    frame.Position = UDim2.new(0, 5, 0, y)
-    frame.Size = UDim2.new(1, -10, 0, 28)
+    local box = CreateBox(parent, y, 34)
+    box.ZIndex = 5
     
     local enabled = default
     
     local btn = Instance.new("TextButton")
-    btn.Parent = frame
+    btn.Parent = box
     btn.BackgroundColor3 = default and C.OnColor or C.OffColor
     btn.BorderSizePixel = 0
-    btn.Position = UDim2.new(0, 0, 0.5, -9)
+    btn.Position = UDim2.new(0, 10, 0.5, -10)
     btn.Size = UDim2.new(0, 20, 0, 20)
     btn.Text = ""
     btn.AutoButtonColor = false
+    btn.ZIndex = 6
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     local label = Instance.new("TextLabel")
-    label.Parent = frame
+    label.Parent = box
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 28, 0, 0)
-    label.Size = UDim2.new(1, -28, 1, 0)
+    label.Position = UDim2.new(0, 38, 0, 0)
+    label.Size = UDim2.new(1, -48, 1, 0)
     label.Font = Enum.Font.SourceSans
     label.Text = text
     label.TextColor3 = C.Text
     label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
     
     btn.MouseButton1Click:Connect(function()
         enabled = not enabled
@@ -901,60 +995,62 @@ local function CreateESPToggle(parent, y, text, default, callback)
     return {SetValue = function(v) enabled = v; btn.BackgroundColor3 = enabled and C.OnColor or C.OffColor end}
 end
 
--- Дропдаун для ESP/AIM
+-- Дропдаун для ESP/AIM (в коробочке, фикс слоёв)
 local function CreateESPDropdown(parent, y, text, options, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.BackgroundTransparency = 1
-    frame.Position = UDim2.new(0, 5, 0, y)
-    frame.Size = UDim2.new(1, -10, 0, 55)
+    local box = CreateBox(parent, y, 55)
+    box.ZIndex = 5
     
     local label = Instance.new("TextLabel")
-    label.Parent = frame
+    label.Parent = box
     label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 0, 18)
+    label.Position = UDim2.new(0, 10, 0, 5)
+    label.Size = UDim2.new(1, -20, 0, 16)
     label.Font = Enum.Font.SourceSans
     label.Text = text
     label.TextColor3 = C.TextDark
-    label.TextSize = 12
+    label.TextSize = 11
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
     
     local selected = default
     
     local mainBtn = Instance.new("TextButton")
-    mainBtn.Parent = frame
+    mainBtn.Parent = box
     mainBtn.BackgroundColor3 = C.Secondary
     mainBtn.BorderColor3 = C.Border
     mainBtn.BorderSizePixel = 1
-    mainBtn.Position = UDim2.new(0, 0, 0, 20)
-    mainBtn.Size = UDim2.new(1, 0, 0, 28)
+    mainBtn.Position = UDim2.new(0, 10, 0, 23)
+    mainBtn.Size = UDim2.new(1, -20, 0, 24)
     mainBtn.Font = Enum.Font.SourceSans
     mainBtn.Text = "  " .. selected
     mainBtn.TextColor3 = C.Text
-    mainBtn.TextSize = 13
+    mainBtn.TextSize = 12
     mainBtn.TextXAlignment = Enum.TextXAlignment.Left
     mainBtn.AutoButtonColor = false
+    mainBtn.ZIndex = 6
     Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 5)
     
     local arrow = Instance.new("TextLabel")
     arrow.Parent = mainBtn
     arrow.BackgroundTransparency = 1
-    arrow.Position = UDim2.new(1, -22, 0, 0)
-    arrow.Size = UDim2.new(0, 18, 1, 0)
+    arrow.Position = UDim2.new(1, -20, 0, 0)
+    arrow.Size = UDim2.new(0, 16, 1, 0)
     arrow.Font = Enum.Font.SourceSansBold
     arrow.Text = "▼"
     arrow.TextColor3 = C.TextDark
-    arrow.TextSize = 10
+    arrow.TextSize = 9
+    arrow.ZIndex = 7
     
     local dropdownList = Instance.new("Frame")
-    dropdownList.Parent = frame
-    dropdownList.BackgroundColor3 = Color3.fromRGB(50, 15, 15)
+    dropdownList.Parent = box
+    dropdownList.BackgroundColor3 = C.SectionBg
     dropdownList.BorderColor3 = C.Border
     dropdownList.BorderSizePixel = 1
-    dropdownList.Position = UDim2.new(0, 0, 0, 48)
-    dropdownList.Size = UDim2.new(1, 0, 0, #options * 25)
+    dropdownList.Position = UDim2.new(0, 10, 0, 47)
+    dropdownList.Size = UDim2.new(1, -20, 0, #options * 22)
     dropdownList.Visible = false
-    dropdownList.ZIndex = 10
+    dropdownList.ZIndex = 99 -- Самый высокий Z, чтоб не перекрывался
+    dropdownList.ClipsDescendants = true
     Instance.new("UICorner", dropdownList).CornerRadius = UDim.new(0, 5)
     
     for i, option in ipairs(options) do
@@ -962,13 +1058,13 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
         optBtn.Parent = dropdownList
         optBtn.BackgroundColor3 = C.Secondary
         optBtn.BorderSizePixel = 0
-        optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 25)
-        optBtn.Size = UDim2.new(1, 0, 0, 25)
+        optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 22)
+        optBtn.Size = UDim2.new(1, 0, 0, 22)
         optBtn.Font = Enum.Font.SourceSans
         optBtn.Text = option
         optBtn.TextColor3 = C.Text
-        optBtn.TextSize = 12
-        optBtn.ZIndex = 11
+        optBtn.TextSize = 11
+        optBtn.ZIndex = 100
         optBtn.AutoButtonColor = false
         
         optBtn.MouseButton1Click:Connect(function()
@@ -990,79 +1086,95 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
     end)
 end
 
--- === ESP Settings ===
-CreateSectionLabel(ESPAIMScroll, ey, "ESP Settings")
-ey = ey + 25
+-- === [ESP] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[ESP]")
+ey = ey + 22
 
 CreateESPToggle(ESPAIMScroll, ey, "Enable ESP", false, function(val)
     ESPSettings.Enabled = val
     if val then for _, p in ipairs(Players:GetPlayers()) do if p ~= Player then CreateESP(p) end end
     else for _, p in ipairs(Players:GetPlayers()) do RemoveESP(p) end end
 end)
-ey = ey + 32
+ey = ey + 40
+
+-- === [Box] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[Box]")
+ey = ey + 22
 
 CreateESPToggle(ESPAIMScroll, ey, "Box ESP", false, function(val) ESPSettings.BoxESP = val end)
-ey = ey + 32
+ey = ey + 40
+
+-- === [Tracer] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[Tracer]")
+ey = ey + 22
 
 CreateESPToggle(ESPAIMScroll, ey, "Tracer ESP", false, function(val) ESPSettings.TracerESP = val end)
-ey = ey + 32
+ey = ey + 40
 
 CreateESPDropdown(ESPAIMScroll, ey, "Tracer Origin", {"Bottom", "Top", "Center"}, "Bottom", function(val) ESPSettings.TracerOrigin = val end)
-ey = ey + 60
+ey = ey + 61
+
+-- === [Names] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[Names]")
+ey = ey + 22
 
 CreateESPToggle(ESPAIMScroll, ey, "Name ESP", false, function(val) ESPSettings.NameESP = val end)
-ey = ey + 32
+ey = ey + 40
 
 CreateESPToggle(ESPAIMScroll, ey, "Skeleton ESP", false, function(val) ESPSettings.SkeletonESP = val end)
-ey = ey + 32
+ey = ey + 40
 
-CreateESPToggle(ESPAIMScroll, ey, "Chams", false, function(val)
+-- === [Chams] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[Chams]")
+ey = ey + 22
+
+CreateESPToggle(ESPAIMScroll, ey, "Enable Chams", false, function(val)
     ESPSettings.ChamsEnabled = val
     for p, h in pairs(Highlights) do h.Enabled = val end
 end)
-ey = ey + 32
+ey = ey + 40
 
-CreateESPDropdown(ESPAIMScroll, ey, "Chams Fill Color", {"Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink"}, "Red", function(val)
+CreateESPDropdown(ESPAIMScroll, ey, "Fill Color", {"Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink"}, "Red", function(val)
     ESPSettings.ChamsFillColor = ChamsColors[val]
     for p, h in pairs(Highlights) do h.FillColor = ChamsColors[val] end
 end)
-ey = ey + 60
+ey = ey + 61
 
-CreateESPToggle(ESPAIMScroll, ey, "Chams Through Walls", true, function(val)
+CreateESPToggle(ESPAIMScroll, ey, "Through Walls", true, function(val)
     ESPSettings.ChamsVisibleThroughWalls = val
     for p, h in pairs(Highlights) do
         h.DepthMode = val and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
     end
 end)
-ey = ey + 32
+ey = ey + 40
 
 CreateESPToggle(ESPAIMScroll, ey, "Team Check", false, function(val) ESPSettings.TeamCheck = val end)
-ey = ey + 38
+ey = ey + 46
 
--- === AIM Settings ===
-CreateSectionLabel(ESPAIMScroll, ey, "AIM Settings")
-ey = ey + 25
+-- === [AIM] ===
+CreateESPSectionHeader(ESPAIMScroll, ey, "[AIM]")
+ey = ey + 22
 
 CreateESPToggle(ESPAIMScroll, ey, "Enable AIM", false, function(val)
     AimSettings.Enabled = val
     AimCircle.Visible = val and AimSettings.Mode == "Circle"
 end)
-ey = ey + 32
+ey = ey + 40
 
 CreateESPDropdown(ESPAIMScroll, ey, "AIM Mode", {"Circle", "Lock"}, "Circle", function(val)
     AimSettings.Mode = val
     AimCircle.Visible = AimSettings.Enabled and val == "Circle"
 end)
-ey = ey + 60
+ey = ey + 61
 
 CreateESPDropdown(ESPAIMScroll, ey, "Circle Size", {"Small", "Medium", "Large"}, "Medium", function(val) AimSettings.CircleSize = val end)
-ey = ey + 60
+ey = ey + 61
 
 CreateESPDropdown(ESPAIMScroll, ey, "Aim Part", {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"}, "Head", function(val) AimSettings.AimPart = val end)
-ey = ey + 60
+ey = ey + 61
 
 CreateESPToggle(ESPAIMScroll, ey, "Prediction", true, function(val) AimSettings.PredictionEnabled = val end)
-ey = ey + 32
+ey = ey + 40
 
 CreateESPToggle(ESPAIMScroll, ey, "Team Check (AIM)", false, function(val) AimSettings.TeamCheck = val end)
 ey = ey + 20
@@ -1359,7 +1471,7 @@ end
 FlingButton.MouseButton1Click:Connect(function()
     if isFlinging then return end
     local TargetName = FlingInput.Text
-    if TargetName == "" then StarterGui:SetCore("SendNotification", {Title = "MagmaHub", Text = "Введи имя!", Duration = 3}); return end
+    if TargetName == "" then StarterGui:SetCore("SendNotification", {Title = "MagmaHub", Text = "Введи имя или выбери из списка!", Duration = 3}); return end
     local Target = FindPlayer(TargetName)
     if not Target then StarterGui:SetCore("SendNotification", {Title = "MagmaHub", Text = "Игрок не найден!", Duration = 3}); return end
     if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1389,7 +1501,7 @@ MinimizeButton.MouseButton1Click:Connect(function()
     FloatBtn.Size = UDim2.new(0, 40, 0, 40)
     FloatBtn.Font = Enum.Font.SourceSansBold
     FloatBtn.Text = "M"
-    FloatBtn.TextColor3 = Color3.fromRGB(64, 11, 11)
+    FloatBtn.TextColor3 = C.Bg
     FloatBtn.TextSize = 18
     FloatBtn.ZIndex = 100
     FloatBtn.AutoButtonColor = false
@@ -1515,6 +1627,9 @@ if ESPSettings.Enabled then
         if p ~= Player then CreateESP(p) end
     end
 end
+
+-- Первичное заполнение списка игроков
+UpdatePlayerList()
 
 -- Уведомление о загрузке
 StarterGui:SetCore("SendNotification", {
