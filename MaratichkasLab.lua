@@ -1,36 +1,47 @@
 --[[
-    - OPTIMIZATION BY DEEPSEEK
-    - Maratichka's Lab System v2.2
-    - Fixed sliders
-    - Mobile fly support
-    - Infinity jumps
-    - Mobile adaptive height
-    - Chams color picker
+    ========MagmaHub========
+    Powered by Maratichka's Lab(@Maratichka)
+    
+    OPTIMIZATION BY DEEPSEEK!!!(Some other functions too, xD), im to bad ssryD:
+    
+    Features:
+    - Player: Speed, Jump, Fly, Sprint, Noclip, Infinity Jumps
+    - FE Fling: SkidFling, usercheck
+    - ESP: Box, Tracer, Name, Skeleton, Chams
+    - AIM: Circle Aim + Lock Aim with Prediction
+    
+    Palette: MagmaHub (#400b0b, #a12424, #ee7b06, #ffa904, #ffdb00)
+    Device: Auto-detect (PC/Mobile)
+    
+    By: @Maratichka 
+    Telegram: -soon-
+   
+    p.s. Комменты в коде на русском, мне лень писать на англе для юзеров
 --]]
 
--- Services
+-- Подрубаем все сервисы, чтоб работало
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local StarterGui = game:GetService("StarterGui")
 
--- Local player
+-- Локальный игрок
 local Player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local Mouse = Player:GetMouse()
 
--- Device check
+-- Чекаем, с телефона зашли или с компа (мобилкам меню поменьше)
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local MenuHeight = IsMobile and 380 or 500
 
--- Globals
+-- Всякие переменные, которые будут нужны потом
 local StoredPosition = nil
 local isFlinging = false
 local isMinimized = false
 local menuVisible = true
 
--- Player Settings
+-- Настройки игрока (скорость, прыжки и тд)
 local PlayerSettings = {
     Speed = 16,
     JumpPower = 50,
@@ -44,6 +55,7 @@ local PlayerSettings = {
     NoclipEnabled = false
 }
 
+-- Флаги для управления флаем (WASD + E/C)
 local FlyInputFlags = {
     forward = false,
     back = false,
@@ -53,13 +65,14 @@ local FlyInputFlags = {
     down = false
 }
 
+-- Объекты для флая и ноклипа
 local FlyBodyVelocity = nil
 local FlyBodyGyro = nil
 local NoclipConnection = nil
 local currentSprintBoost = 0
 local InfinityJumpConnection = nil
 
--- AIM Settings
+-- Настройки AIM
 local AimSettings = {
     Enabled = false,
     Mode = "Circle",
@@ -70,27 +83,28 @@ local AimSettings = {
     TeamCheck = false
 }
 
+-- Размеры круга для Circle AIM
 local CircleSizes = {
     Small = 80,
     Medium = 150,
     Large = 250
 }
 
--- ESP Settings
+-- Настройки ESP
 local ESPSettings = {
     Enabled = false,
     BoxESP = false,
-    BoxColor = Color3.fromRGB(255, 25, 25),
+    BoxColor = Color3.fromRGB(255, 169, 4),
     BoxThickness = 1,
     TracerESP = false,
     TracerOrigin = "Bottom",
-    TracerColor = Color3.fromRGB(255, 25, 25),
+    TracerColor = Color3.fromRGB(255, 169, 4),
     TracerThickness = 1,
     NameESP = false,
-    NameColor = Color3.fromRGB(255, 255, 255),
+    NameColor = Color3.fromRGB(255, 219, 0),
     NameSize = 14,
     SkeletonESP = false,
-    SkeletonColor = Color3.fromRGB(255, 255, 255),
+    SkeletonColor = Color3.fromRGB(255, 169, 4),
     SkeletonThickness = 1.5,
     ChamsEnabled = false,
     ChamsFillColor = Color3.fromRGB(255, 0, 0),
@@ -101,6 +115,7 @@ local ESPSettings = {
     MaxDistance = 1000
 }
 
+-- Цвета для выбора заливки Chams
 local ChamsColors = {
     Red = Color3.fromRGB(255, 0, 0),
     Blue = Color3.fromRGB(0, 0, 255),
@@ -111,42 +126,42 @@ local ChamsColors = {
     Pink = Color3.fromRGB(255, 0, 128)
 }
 
+-- Таблицы для хранения ESP-объектов и Highlight'ов
 local ESPDrawings = {}
 local Highlights = {}
 
--- AIM circle
+-- Круг для AIM (когда в Circle режиме)
 local AimCircle = Drawing.new("Circle")
 AimCircle.Visible = false
-AimCircle.Color = Color3.fromRGB(255, 255, 255)
+AimCircle.Color = Color3.fromRGB(255, 219, 0)
 AimCircle.Thickness = 1.5
 AimCircle.Transparency = 0.7
 AimCircle.Filled = false
 AimCircle.NumSides = 64
 
--- Colors (red/black theme)
+-- Палитра MagmaHub, пизже чем красный с черным
 local C = {
-    Bg = Color3.fromRGB(12, 12, 18),
-    Secondary = Color3.fromRGB(22, 22, 32),
-    Accent = Color3.fromRGB(180, 10, 10),
-    AccentLight = Color3.fromRGB(230, 40, 40),
-    AccentDark = Color3.fromRGB(120, 5, 5),
-    Text = Color3.fromRGB(220, 200, 200),
-    TextDark = Color3.fromRGB(160, 140, 140),
-    TextAccent = Color3.fromRGB(255, 70, 70),
-    OnColor = Color3.fromRGB(200, 20, 20), -- for active toggles
-    OffColor = Color3.fromRGB(40, 35, 35),
-    Border = Color3.fromRGB(70, 40, 40),
-    SliderBg = Color3.fromRGB(35, 28, 28),
-    SliderFill = Color3.fromRGB(200, 15, 15)
+    Bg = Color3.fromRGB(64, 11, 11),          -- #400b0b - Типо лавовый камень, фон
+    Secondary = Color3.fromRGB(161, 36, 36),   -- #a12424 - Вторичный фон, секции
+    Accent = Color3.fromRGB(255, 169, 4),      -- #ffa904 - Магма, кнопки активные
+    AccentLight = Color3.fromRGB(255, 219, 0), -- #ffdb00 - Самое яркое, подсветка текста
+    Border = Color3.fromRGB(238, 123, 6),      -- #ee7b06 - Обводки, слайдеры заполненные
+    Text = Color3.fromRGB(255, 200, 100),      -- Светлый магмовый текст
+    TextDark = Color3.fromRGB(200, 120, 50),   -- Тусклый текст для подписей
+    OffColor = Color3.fromRGB(50, 15, 15),     -- Тоггл выключен (почти как фон)
+    OnColor = Color3.fromRGB(238, 123, 6),     -- Тоггл включен (#ee7b06)
+    SliderBg = Color3.fromRGB(40, 12, 12),     -- Фон слайдера (пустая часть)
+    SliderFill = Color3.fromRGB(255, 169, 4)   -- Заполнение слайдера (#ffa904)
 }
 
 -- ==================== GUI ====================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MLS_MainGUI"
+ScreenGui.Name = "MagmaHub_GUI"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- Основной фрейм
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -158,20 +173,14 @@ MainFrame.Size = UDim2.new(0, 320, 0, MenuHeight)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 8)
-MainCorner.Parent = MainFrame
-
--- Title Bar
+-- Верхняя панель с названием и кнопками
 local TitleBar = Instance.new("Frame")
 TitleBar.Parent = MainFrame
 TitleBar.BackgroundColor3 = C.Secondary
 TitleBar.Size = UDim2.new(1, 0, 0, 35)
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 8)
-TitleCorner.Parent = TitleBar
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
 
 local TitleText = Instance.new("TextLabel")
 TitleText.Parent = TitleBar
@@ -179,12 +188,12 @@ TitleText.BackgroundTransparency = 1
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Font = Enum.Font.SourceSansBold
-TitleText.Text = "Maratichka's Lab"
+TitleText.Text = "MagmaHub"
 TitleText.TextColor3 = C.AccentLight
 TitleText.TextSize = 15
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 
--- Minimize
+-- Кнопка свернуть
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Parent = TitleBar
 MinimizeButton.BackgroundColor3 = C.Secondary
@@ -192,11 +201,12 @@ MinimizeButton.Position = UDim2.new(1, -65, 0.5, -10)
 MinimizeButton.Size = UDim2.new(0, 22, 0, 22)
 MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.Text = "─"
-MinimizeButton.TextColor3 = Color3.fromRGB(200, 180, 180)
+MinimizeButton.TextColor3 = C.TextDark
 MinimizeButton.TextSize = 14
-Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 4)
+MinimizeButton.AutoButtonColor = false
+Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 5)
 
--- Close
+-- Кнопка закрыть (крестик) - сбрасывает всё
 local CloseButton = Instance.new("TextButton")
 CloseButton.Parent = TitleBar
 CloseButton.BackgroundColor3 = C.Accent
@@ -206,9 +216,10 @@ CloseButton.Font = Enum.Font.SourceSansBold
 CloseButton.Text = "×"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseButton.TextSize = 14
-Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 4)
+CloseButton.AutoButtonColor = false
+Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 5)
 
--- Tabs
+-- Панель с вкладками
 local TabFrame = Instance.new("Frame")
 TabFrame.Parent = MainFrame
 TabFrame.BackgroundTransparency = 1
@@ -219,6 +230,7 @@ local Tabs = {"Player", "FE Fling", "ESP/AIM"}
 local TabButtons = {}
 local ContentFrames = {}
 
+-- Создаём вкладки и контент под них
 for i, tabName in ipairs(Tabs) do
     local TabButton = Instance.new("TextButton")
     TabButton.Parent = TabFrame
@@ -227,9 +239,10 @@ for i, tabName in ipairs(Tabs) do
     TabButton.Position = UDim2.new((i-1)/3, 0, 0, 0)
     TabButton.Font = Enum.Font.SourceSansBold
     TabButton.Text = tabName
-    TabButton.TextColor3 = Color3.fromRGB(180, 160, 160)
+    TabButton.TextColor3 = C.TextDark
     TabButton.TextSize = 12
-    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 5)
+    TabButton.AutoButtonColor = false
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 6)
     TabButtons[tabName] = TabButton
     
     local Content = Instance.new("Frame")
@@ -243,6 +256,7 @@ for i, tabName in ipairs(Tabs) do
     ContentFrames[tabName] = Content
 end
 
+-- Переключение вкладок
 local currentTab = "Player"
 local function SwitchTab(tabName)
     if currentTab == tabName then return end
@@ -252,10 +266,10 @@ local function SwitchTab(tabName)
     for name, btn in pairs(TabButtons) do
         if name == tabName then
             btn.BackgroundColor3 = C.Accent
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextColor3 = C.AccentLight
         else
             btn.BackgroundColor3 = C.Secondary
-            btn.TextColor3 = Color3.fromRGB(180, 160, 160)
+            btn.TextColor3 = C.TextDark
         end
     end
 end
@@ -264,9 +278,9 @@ for tabName, button in pairs(TabButtons) do
     button.MouseButton1Click:Connect(function() SwitchTab(tabName) end)
 end
 TabButtons["Player"].BackgroundColor3 = C.Accent
-TabButtons["Player"].TextColor3 = Color3.fromRGB(255, 255, 255)
+TabButtons["Player"].TextColor3 = C.AccentLight
 
--- ==================== PLAYER TAB ====================
+-- ==================== ВКЛАДКА PLAYER ====================
 local PlayerScroll = Instance.new("ScrollingFrame")
 PlayerScroll.Parent = ContentFrames["Player"]
 PlayerScroll.BackgroundTransparency = 1
@@ -277,20 +291,20 @@ PlayerScroll.ScrollBarImageColor3 = C.Border
 
 local py = 5
 
--- Helper: Section Box
+-- Создать коробочку (секцию) для элементов
 local function CreateBox(parent, y, h)
     local box = Instance.new("Frame")
     box.Parent = parent
-    box.BackgroundColor3 = Color3.fromRGB(18, 15, 15)
+    box.BackgroundColor3 = Color3.fromRGB(50, 15, 15)
     box.BorderColor3 = C.Border
     box.BorderSizePixel = 1
     box.Position = UDim2.new(0, 0, 0, y)
     box.Size = UDim2.new(1, 0, 0, h)
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 5)
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
     return box
 end
 
--- Helper: Slider
+-- Слайдер с перетягиванием, на телефоне тоже норм работает
 local function CreateSlider(parent, y, label, minVal, maxVal, defaultVal, callback)
     local box = CreateBox(parent, y, 60)
     
@@ -319,12 +333,12 @@ local function CreateSlider(parent, y, label, minVal, maxVal, defaultVal, callba
     valueBox.Size = UDim2.new(0, 50, 0, 20)
     valueBox.Font = Enum.Font.SourceSans
     valueBox.Text = tostring(defaultVal)
-    valueBox.TextColor3 = C.TextAccent
+    valueBox.TextColor3 = C.AccentLight
     valueBox.TextSize = 12
     valueBox.TextXAlignment = Enum.TextXAlignment.Center
-    Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 5)
     
-    -- Slider bg
+    -- Полоска слайдера
     local sliderBg = Instance.new("TextButton")
     sliderBg.Parent = box
     sliderBg.BackgroundColor3 = C.SliderBg
@@ -355,6 +369,7 @@ local function CreateSlider(parent, y, label, minVal, maxVal, defaultVal, callba
         callback(val)
     end
     
+    -- Захват слайдера (мышкой и пальцем)
     sliderBg.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
@@ -382,6 +397,7 @@ local function CreateSlider(parent, y, label, minVal, maxVal, defaultVal, callba
         end
     end)
     
+    -- Ввод с клавиатуры
     valueBox.FocusLost:Connect(function()
         local num = tonumber(valueBox.Text)
         if num then setValue(num) else valueBox.Text = tostring(currentValue) end
@@ -390,7 +406,7 @@ local function CreateSlider(parent, y, label, minVal, maxVal, defaultVal, callba
     return {SetValue = function(v) setValue(v) end, GetValue = function() return currentValue end}
 end
 
--- Helper: Toggle
+-- Тоггл (вкл/выкл)
 local function CreateToggle(parent, y, text, default, callback)
     local box = CreateBox(parent, y, 34)
     
@@ -402,7 +418,7 @@ local function CreateToggle(parent, y, text, default, callback)
     btn.Size = UDim2.new(0, 20, 0, 20)
     btn.Text = ""
     btn.AutoButtonColor = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     local label = Instance.new("TextLabel")
     label.Parent = box
@@ -429,7 +445,7 @@ local function CreateToggle(parent, y, text, default, callback)
     }
 end
 
--- Helper: Bind
+-- Бинд-кнопка
 local function CreateBind(parent, y, label, defaultKey, callback)
     local box = CreateBox(parent, y, 34)
     
@@ -453,10 +469,10 @@ local function CreateBind(parent, y, label, defaultKey, callback)
     bindBtn.Size = UDim2.new(0, 70, 0, 20)
     bindBtn.Font = Enum.Font.SourceSans
     bindBtn.Text = defaultKey.Name
-    bindBtn.TextColor3 = C.TextAccent
+    bindBtn.TextColor3 = C.AccentLight
     bindBtn.TextSize = 11
     bindBtn.AutoButtonColor = false
-    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 5)
     
     local listening = false
     
@@ -466,6 +482,7 @@ local function CreateBind(parent, y, label, defaultKey, callback)
         bindBtn.BackgroundColor3 = C.Accent
     end)
     
+    -- Ждём нажатия клавиши
     UserInputService.InputBegan:Connect(function(input)
         if listening then
             if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -474,7 +491,6 @@ local function CreateBind(parent, y, label, defaultKey, callback)
                 bindBtn.BackgroundColor3 = C.Secondary
                 callback(input.KeyCode)
             elseif input.UserInputType == Enum.UserInputType.Touch then
-                -- On mobile, keep default
                 listening = false
                 bindBtn.Text = defaultKey.Name
                 bindBtn.BackgroundColor3 = C.Secondary
@@ -483,32 +499,28 @@ local function CreateBind(parent, y, label, defaultKey, callback)
     end)
 end
 
--- Speed
+-- === SPEED ===
 CreateSlider(PlayerScroll, py, "Speed", 1, 500, 16, function(val)
     PlayerSettings.Speed = val
     ApplyCharacterSettings()
 end)
 py = py + 66
 
--- Jump Power
+-- === JUMP POWER ===
 CreateSlider(PlayerScroll, py, "Jump Power", 1, 300, 50, function(val)
     PlayerSettings.JumpPower = val
     ApplyCharacterSettings()
 end)
 py = py + 66
 
--- Infinity Jumps
+-- === INFINITY JUMPS ===
 CreateToggle(PlayerScroll, py, "Infinity Jumps", false, function(val)
     PlayerSettings.InfinityJumps = val
-    if val then
-        EnableInfinityJumps()
-    else
-        DisableInfinityJumps()
-    end
+    if val then EnableInfinityJumps() else DisableInfinityJumps() end
 end)
 py = py + 40
 
--- Fly
+-- === FLY ===
 local FlyToggleRef = CreateToggle(PlayerScroll, py, "Enable Fly", false, function(val)
     PlayerSettings.FlyEnabled = val
     if val then EnableFly() else DisableFly() end
@@ -525,7 +537,7 @@ CreateBind(PlayerScroll, py, "Fly Key:", PlayerSettings.FlyKey, function(key)
 end)
 py = py + 40
 
--- Sprint
+-- === SPRINT ===
 local SprintToggleRef = CreateToggle(PlayerScroll, py, "Enable Sprint", false, function(val)
     PlayerSettings.SprintEnabled = val
     if not val then currentSprintBoost = 0; ApplyCharacterSettings() end
@@ -542,7 +554,7 @@ CreateBind(PlayerScroll, py, "Sprint Key:", PlayerSettings.SprintKey, function(k
 end)
 py = py + 40
 
--- Noclip
+-- === NOCLIP ===
 CreateToggle(PlayerScroll, py, "Enable Noclip", false, function(val)
     PlayerSettings.NoclipEnabled = val
     if val then EnableNoclip() else DisableNoclip() end
@@ -551,7 +563,7 @@ py = py + 46
 
 PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, py)
 
--- ==================== PLAYER FUNCTIONS ====================
+-- ==================== ФУНКЦИИ ИГРОКА ====================
 function ApplyCharacterSettings()
     if Player.Character then
         local humanoid = Player.Character:FindFirstChild("Humanoid")
@@ -635,7 +647,7 @@ function DisableNoclip()
     end
 end
 
--- Fly controls (works on both PC and mobile)
+-- Управление флаем (клавиши и мобильные кнопки)
 local function handleFlyInput(input, isBegin)
     if input.UserInputType == Enum.UserInputType.Keyboard then
         if input.KeyCode == PlayerSettings.FlyKey then
@@ -681,12 +693,12 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Mobile fly buttons (движение слева, высота справа)
+-- Мобильные кнопки для флая (движение слева, высота справа)
 if IsMobile then
     local function createMobileFlyButton(text, position, flag)
         local btn = Instance.new("TextButton")
         btn.Parent = ScreenGui
-        btn.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
+        btn.BackgroundColor3 = Color3.fromRGB(238, 123, 6)
         btn.BackgroundTransparency = 0.6
         btn.Position = position
         btn.Size = UDim2.new(0, 45, 0, 45)
@@ -696,7 +708,7 @@ if IsMobile then
         btn.Font = Enum.Font.SourceSansBold
         btn.Visible = false
         btn.ZIndex = 10
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 22)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
         
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch then
@@ -714,17 +726,17 @@ if IsMobile then
     
     -- Левая сторона: движение (WASD)
     local mobileFlyBtns = {
-        createMobileFlyButton("▲", UDim2.new(0.08, -22, 0.40, -22), "forward"),   -- Вперёд (верх)
-        createMobileFlyButton("▼", UDim2.new(0.08, -22, 0.60, -22), "back"),      -- Назад (низ)
-        createMobileFlyButton("◄", UDim2.new(0.02, -22, 0.50, -22), "left"),      -- Влево
-        createMobileFlyButton("►", UDim2.new(0.14, -22, 0.50, -22), "right"),     -- Вправо
+        createMobileFlyButton("▲", UDim2.new(0.08, -22, 0.40, -22), "forward"),
+        createMobileFlyButton("▼", UDim2.new(0.08, -22, 0.60, -22), "back"),
+        createMobileFlyButton("◄", UDim2.new(0.02, -22, 0.50, -22), "left"),
+        createMobileFlyButton("►", UDim2.new(0.14, -22, 0.50, -22), "right"),
         
         -- Правая сторона: высота (E/C)
-        createMobileFlyButton("⇧", UDim2.new(0.88, -22, 0.40, -22), "up"),        -- Вверх
-        createMobileFlyButton("⇩", UDim2.new(0.88, -22, 0.60, -22), "down"),      -- Вниз
+        createMobileFlyButton("⇧", UDim2.new(0.88, -22, 0.40, -22), "up"),
+        createMobileFlyButton("⇩", UDim2.new(0.88, -22, 0.60, -22), "down"),
     }
     
-    -- Show/hide mobile fly buttons
+    -- Показываем/прячем мобильные кнопки
     RunService.RenderStepped:Connect(function()
         for _, btn in ipairs(mobileFlyBtns) do
             btn.Visible = PlayerSettings.FlyEnabled and menuVisible
@@ -732,7 +744,7 @@ if IsMobile then
     end)
 end
 
--- Fly update
+-- Обновление флая каждый кадр
 RunService.RenderStepped:Connect(function()
     if PlayerSettings.FlyEnabled and FlyBodyVelocity then
         local dir = Vector3.zero
@@ -752,7 +764,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Character events
+-- При респавне заново применяем настройки
 Player.CharacterAdded:Connect(function(character)
     task.wait(0.5)
     ApplyCharacterSettings()
@@ -763,7 +775,7 @@ end)
 
 if Player.Character then ApplyCharacterSettings() end
 
--- ==================== FE FLING TAB ====================
+-- ==================== ВКЛАДКА FE FLING ====================
 local FlingScroll = Instance.new("ScrollingFrame")
 FlingScroll.Parent = ContentFrames["FE Fling"]
 FlingScroll.BackgroundTransparency = 1
@@ -781,7 +793,7 @@ FlingTitle.Position = UDim2.new(0, 0, 0, 10)
 FlingTitle.Size = UDim2.new(1, 0, 0, 22)
 FlingTitle.Font = Enum.Font.SourceSansBold
 FlingTitle.Text = "FE Fling"
-FlingTitle.TextColor3 = C.TextAccent
+FlingTitle.TextColor3 = C.AccentLight
 FlingTitle.TextSize = 16
 FlingTitle.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -792,23 +804,24 @@ FlingHint.Position = UDim2.new(0, 0, 0, 34)
 FlingHint.Size = UDim2.new(1, 0, 0, 16)
 FlingHint.Font = Enum.Font.SourceSans
 FlingHint.Text = "(enter name)"
-FlingHint.TextColor3 = Color3.fromRGB(180, 80, 80)
+FlingHint.TextColor3 = C.TextDark
 FlingHint.TextSize = 11
 FlingHint.TextXAlignment = Enum.TextXAlignment.Center
 
 local FlingInput = Instance.new("TextBox")
 FlingInput.Parent = FlingBox
-FlingInput.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-FlingInput.BorderColor3 = C.TextAccent
+FlingInput.BackgroundColor3 = Color3.fromRGB(30, 8, 8)
+FlingInput.BorderColor3 = C.AccentLight
 FlingInput.BorderSizePixel = 1
 FlingInput.Position = UDim2.new(0, 20, 0, 55)
 FlingInput.Size = UDim2.new(1, -40, 0, 30)
 FlingInput.Font = Enum.Font.SourceSans
 FlingInput.PlaceholderText = "username..."
-FlingInput.PlaceholderColor3 = Color3.fromRGB(120, 50, 50)
+FlingInput.PlaceholderColor3 = C.TextDark
 FlingInput.Text = ""
-FlingInput.TextColor3 = C.TextAccent
+FlingInput.TextColor3 = C.AccentLight
 FlingInput.TextSize = 14
+Instance.new("UICorner", FlingInput).CornerRadius = UDim.new(0, 5)
 
 local FlingButton = Instance.new("TextButton")
 FlingButton.Parent = FlingBox
@@ -817,11 +830,12 @@ FlingButton.Position = UDim2.new(0, 20, 0, 93)
 FlingButton.Size = UDim2.new(1, -40, 0, 36)
 FlingButton.Font = Enum.Font.SourceSansBold
 FlingButton.Text = "FLING"
-FlingButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+FlingButton.TextColor3 = Color3.fromRGB(64, 11, 11)
 FlingButton.TextSize = 20
+FlingButton.AutoButtonColor = false
 Instance.new("UICorner", FlingButton).CornerRadius = UDim.new(0, 6)
 
--- ==================== ESP/AIM TAB ====================
+-- ==================== ВКЛАДКА ESP/AIM ====================
 local ESPAIMScroll = Instance.new("ScrollingFrame")
 ESPAIMScroll.Parent = ContentFrames["ESP/AIM"]
 ESPAIMScroll.BackgroundTransparency = 1
@@ -832,6 +846,7 @@ ESPAIMScroll.ScrollBarImageColor3 = C.Border
 
 local ey = 5
 
+-- Заголовок секции
 local function CreateSectionLabel(parent, y, text)
     local label = Instance.new("TextLabel")
     label.Parent = parent
@@ -846,6 +861,7 @@ local function CreateSectionLabel(parent, y, text)
     return label
 end
 
+-- Тоггл для ESP/AIM
 local function CreateESPToggle(parent, y, text, default, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
@@ -863,7 +879,7 @@ local function CreateESPToggle(parent, y, text, default, callback)
     btn.Size = UDim2.new(0, 20, 0, 20)
     btn.Text = ""
     btn.AutoButtonColor = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
     local label = Instance.new("TextLabel")
     label.Parent = frame
@@ -885,6 +901,7 @@ local function CreateESPToggle(parent, y, text, default, callback)
     return {SetValue = function(v) enabled = v; btn.BackgroundColor3 = enabled and C.OnColor or C.OffColor end}
 end
 
+-- Дропдаун для ESP/AIM
 local function CreateESPDropdown(parent, y, text, options, default, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
@@ -917,7 +934,7 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
     mainBtn.TextSize = 13
     mainBtn.TextXAlignment = Enum.TextXAlignment.Left
     mainBtn.AutoButtonColor = false
-    Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 5)
     
     local arrow = Instance.new("TextLabel")
     arrow.Parent = mainBtn
@@ -931,19 +948,19 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
     
     local dropdownList = Instance.new("Frame")
     dropdownList.Parent = frame
-    dropdownList.BackgroundColor3 = Color3.fromRGB(18, 14, 14)
+    dropdownList.BackgroundColor3 = Color3.fromRGB(50, 15, 15)
     dropdownList.BorderColor3 = C.Border
     dropdownList.BorderSizePixel = 1
     dropdownList.Position = UDim2.new(0, 0, 0, 48)
     dropdownList.Size = UDim2.new(1, 0, 0, #options * 25)
     dropdownList.Visible = false
     dropdownList.ZIndex = 10
-    Instance.new("UICorner", dropdownList).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", dropdownList).CornerRadius = UDim.new(0, 5)
     
     for i, option in ipairs(options) do
         local optBtn = Instance.new("TextButton")
         optBtn.Parent = dropdownList
-        optBtn.BackgroundColor3 = Color3.fromRGB(28, 22, 22)
+        optBtn.BackgroundColor3 = C.Secondary
         optBtn.BorderSizePixel = 0
         optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 25)
         optBtn.Size = UDim2.new(1, 0, 0, 25)
@@ -960,7 +977,7 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
             dropdownList.Visible = false
             arrow.Text = "▼"
             for _, b in ipairs(dropdownList:GetChildren()) do
-                if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(28, 22, 22) end
+                if b:IsA("TextButton") then b.BackgroundColor3 = C.Secondary end
             end
             optBtn.BackgroundColor3 = C.Accent
             callback(option)
@@ -973,7 +990,7 @@ local function CreateESPDropdown(parent, y, text, options, default, callback)
     end)
 end
 
--- ESP
+-- === ESP Settings ===
 CreateSectionLabel(ESPAIMScroll, ey, "ESP Settings")
 ey = ey + 25
 
@@ -1022,7 +1039,7 @@ ey = ey + 32
 CreateESPToggle(ESPAIMScroll, ey, "Team Check", false, function(val) ESPSettings.TeamCheck = val end)
 ey = ey + 38
 
--- AIM
+-- === AIM Settings ===
 CreateSectionLabel(ESPAIMScroll, ey, "AIM Settings")
 ey = ey + 25
 
@@ -1052,7 +1069,7 @@ ey = ey + 20
 
 ESPAIMScroll.CanvasSize = UDim2.new(0, 0, 0, ey)
 
--- ==================== ESP FUNCTIONS ====================
+-- ==================== ESP ФУНКЦИИ ====================
 function CreateESP(targetPlayer)
     if targetPlayer == Player or ESPDrawings[targetPlayer] then return end
     
@@ -1108,6 +1125,8 @@ function HideAllESP(drawings)
     for _, line in pairs(drawings.Skeleton) do line.Visible = false end
 end
 
+-- ESP обновляется каждый кадр, если включено
+-- Дальше 1000 studs не рисуем, ибо смысла нет и лагает
 function UpdateESP(targetPlayer)
     if not ESPSettings.Enabled then return end
     local drawings = ESPDrawings[targetPlayer]
@@ -1190,7 +1209,7 @@ function UpdateESP(targetPlayer)
         end
     else for _, line in pairs(drawings.Skeleton) do line.Visible = false end end
     
-    -- Highlight
+    -- Highlight (Chams через стены, чтоб видеть крыс в углах)
     local highlight = Highlights[targetPlayer]
     if highlight then
         highlight.Parent = character
@@ -1203,7 +1222,7 @@ function UpdateESP(targetPlayer)
     end
 end
 
--- ==================== AIM FUNCTIONS ====================
+-- ==================== AIM ФУНКЦИИ ====================
 function GetAimTarget()
     local target = nil
     local shortestDistance = AimSettings.Mode == "Circle" and CircleSizes[AimSettings.CircleSize] or math.huge
@@ -1235,7 +1254,7 @@ function AimAt(target)
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
 end
 
--- ==================== FLING FUNCTIONS ====================
+-- ==================== FLING ФУНКЦИИ ====================
 function FindPlayer(Name)
     Name = Name:lower()
     for _, Target in ipairs(Players:GetPlayers()) do
@@ -1248,8 +1267,9 @@ function FindPlayer(Name)
     return nil
 end
 
+-- Флинг на 2 сек, потом возращает тебя обратно
+-- Если жертва сдохла или вышла — флинг сбрасывается
 function SkidFling(TargetPlayer)
-    -- [Same as before - kept for brevity]
     local Character = Player.Character
     if not Character then return end
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
@@ -1285,8 +1305,17 @@ function SkidFling(TargetPlayer)
     local BasePart = TRootPart or THead
     if TRootPart and THead then BasePart = (TRootPart.Position - THead.Position).Magnitude > 5 and THead or TRootPart end
     
-    local TimeToWait, StartTime, Angle = 2, tick(), 0
+    local TimeToWait = 2
+    local StartTime = tick()
+    local Angle = 0
+    
+    -- Глобальный таймаут 7 секунд, чтоб флинг не зацикливался
+    local globalTimeout = 7
+    local flingStart = tick()
+    
     repeat
+        if tick() - flingStart > globalTimeout then break end
+        
         if RootPart and THumanoid and BasePart then
             if BasePart.Velocity.Magnitude < 50 then
                 Angle += 100
@@ -1306,6 +1335,7 @@ function SkidFling(TargetPlayer)
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
     Camera.CameraSubject = Humanoid
     
+    -- Возвращаем игрока обратно, даже если флинг прервался
     if OldPos then
         repeat
             pcall(function()
@@ -1325,13 +1355,13 @@ function SkidFling(TargetPlayer)
     FlingButton.BackgroundColor3 = C.Accent
 end
 
--- ==================== EVENT HANDLERS ====================
+-- ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 FlingButton.MouseButton1Click:Connect(function()
     if isFlinging then return end
     local TargetName = FlingInput.Text
-    if TargetName == "" then StarterGui:SetCore("SendNotification", {Title = "MLS", Text = "Enter a username!", Duration = 3}); return end
+    if TargetName == "" then StarterGui:SetCore("SendNotification", {Title = "MagmaHub", Text = "Введи имя!", Duration = 3}); return end
     local Target = FindPlayer(TargetName)
-    if not Target then StarterGui:SetCore("SendNotification", {Title = "MLS", Text = "Player not found!", Duration = 3}); return end
+    if not Target then StarterGui:SetCore("SendNotification", {Title = "MagmaHub", Text = "Игрок не найден!", Duration = 3}); return end
     if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         StoredPosition = Player.Character.HumanoidRootPart.CFrame
     end
@@ -1343,10 +1373,11 @@ end)
 
 FlingInput.FocusLost:Connect(function(ep) if ep then FlingButton.MouseButton1Click:Fire() end end)
 
--- Minimize (fixed - float button doesn't open on drag)
+-- Кнопка свернуть (сохраняет позицию, не открывается при перетаскивании)
 local FloatBtn = nil
 MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = true
+    local savedPos = MainFrame.Position
     MainFrame.Visible = false
     
     if FloatBtn then FloatBtn:Destroy() end
@@ -1354,37 +1385,17 @@ MinimizeButton.MouseButton1Click:Connect(function()
     FloatBtn.Name = "FloatButton"
     FloatBtn.Parent = ScreenGui
     FloatBtn.BackgroundColor3 = C.Accent
-    FloatBtn.Position = UDim2.new(0.5, -20, 0.5, -20)
+    FloatBtn.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset + 140, savedPos.Y.Scale, savedPos.Y.Offset)
     FloatBtn.Size = UDim2.new(0, 40, 0, 40)
     FloatBtn.Font = Enum.Font.SourceSansBold
-    FloatBtn.Text = "MLS"
-    FloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FloatBtn.TextSize = 10
+    FloatBtn.Text = "M"
+    FloatBtn.TextColor3 = Color3.fromRGB(64, 11, 11)
+    FloatBtn.TextSize = 18
     FloatBtn.ZIndex = 100
-    Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
+    FloatBtn.AutoButtonColor = false
+    Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(0, 8)
     
-    -- Use a delayed click detection to prevent drag-triggering
     local dragStartPos = nil
-    FloatBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragStartPos = input.Position
-        end
-    end)
-    
-    FloatBtn.InputEnded:Connect(function(input)
-        if dragStartPos and input.Position then
-            local dist = (input.Position - dragStartPos).Magnitude
-            if dist < 10 then -- Only click if barely moved
-                isMinimized = false
-                MainFrame.Visible = true
-                FloatBtn:Destroy()
-                FloatBtn = nil
-            end
-        end
-        dragStartPos = nil
-    end)
-    
-    -- Make draggable manually so it doesn't trigger click on drag end
     local dragging = false
     local dragStart = nil
     local startPos = nil
@@ -1394,6 +1405,7 @@ MinimizeButton.MouseButton1Click:Connect(function()
             dragging = true
             dragStart = input.Position
             startPos = FloatBtn.Position
+            dragStartPos = input.Position
         end
     end)
     
@@ -1404,12 +1416,23 @@ MinimizeButton.MouseButton1Click:Connect(function()
         end
     end)
     
-    FloatBtn.InputEnded:Connect(function()
+    FloatBtn.InputEnded:Connect(function(input)
+        if dragStartPos and input.Position then
+            local dist = (input.Position - dragStartPos).Magnitude
+            if dist < 10 then
+                isMinimized = false
+                MainFrame.Position = savedPos
+                MainFrame.Visible = true
+                FloatBtn:Destroy()
+                FloatBtn = nil
+            end
+        end
         dragging = false
+        dragStartPos = nil
     end)
 end)
 
--- Close
+-- Кнопка закрыть (крестик) - сбрасывает всё
 CloseButton.MouseButton1Click:Connect(function()
     DisableFly(); DisableNoclip(); DisableInfinityJumps()
     for _, p in ipairs(Players:GetPlayers()) do RemoveESP(p) end
@@ -1418,7 +1441,7 @@ CloseButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Hover effects
+-- Ховер-эффекты
 MinimizeButton.MouseEnter:Connect(function() MinimizeButton.BackgroundColor3 = C.Border end)
 MinimizeButton.MouseLeave:Connect(function() MinimizeButton.BackgroundColor3 = C.Secondary end)
 CloseButton.MouseEnter:Connect(function() CloseButton.BackgroundColor3 = C.AccentLight end)
@@ -1426,7 +1449,7 @@ CloseButton.MouseLeave:Connect(function() CloseButton.BackgroundColor3 = C.Accen
 FlingButton.MouseEnter:Connect(function() if not isFlinging then FlingButton.BackgroundColor3 = C.AccentLight end end)
 FlingButton.MouseLeave:Connect(function() if not isFlinging then FlingButton.BackgroundColor3 = C.Accent end end)
 
--- L Alt toggle
+-- L Alt скрыть/показать меню
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.LeftAlt then
@@ -1442,7 +1465,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- AIM mouse
+-- AIM захват мыши
 local mouseDown = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -1452,8 +1475,9 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then mouseDown = false end
 end)
 
--- ==================== RENDER LOOP ====================
+-- ==================== ГЛАВНЫЙ ЦИКЛ ====================
 RunService.RenderStepped:Connect(function()
+    -- AIM circle
     if AimSettings.Enabled and AimSettings.Mode == "Circle" then
         AimCircle.Visible = true
         AimCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -1462,11 +1486,13 @@ RunService.RenderStepped:Connect(function()
         AimCircle.Visible = false
     end
     
+    -- AIM
     if AimSettings.Enabled and mouseDown then
         local target = GetAimTarget()
         if target then AimAt(target) end
     end
     
+    -- ESP
     if ESPSettings.Enabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= Player then
@@ -1477,22 +1503,24 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Новые игроки
 Players.PlayerAdded:Connect(function(p)
     if p ~= Player and ESPSettings.Enabled then task.wait(1); CreateESP(p) end
 end)
 Players.PlayerRemoving:Connect(function(p) RemoveESP(p) end)
 
+-- Если ESP включен при старте
 if ESPSettings.Enabled then
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= Player then CreateESP(p) end
     end
 end
 
+-- Уведомление о загрузке
 StarterGui:SetCore("SendNotification", {
-    Title = "Maratichka's Lab",
-    Text = "v2.2 Loaded! " .. (IsMobile and "Mobile" or "PC") .. " mode",
+    Title = "MagmaHub",
+    Text = "Загружен! " .. (IsMobile and "Мобилка" or "ПК") .. " | LAlt скрыть",
     Duration = 5
 })
 
-print("Maratichka's Lab System v2.2 - Loaded")
-print("Device:", IsMobile and "Mobile" or "PC", "| Menu height:", MenuHeight)
+print("MagmaHub загружен! | " .. (IsMobile and "Mobile" or "PC"))
